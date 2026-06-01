@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SNCRICK.COM Admin Live</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="admin-body">
+    <header class="admin-header">
+        <a href="/" class="brand">
+            <img src="/static/images/sncrick-logo.jpeg" alt="SN CRICK">
+            <div>
+                <h1>SN <span>CRICK</span></h1>
+                <p>SNCRICK.COM Admin Panel</p>
+            </div>
+        </a>
+        <div class="admin-top-actions">
+            <a href="/" class="outline-link">View Website</a>
+            <a href="/logout" class="admin-link">Logout</a>
+        </div>
+    </header>
+
+    <main class="admin-main">
+        <section class="admin-panel">
+            <h2>Live Stream Details</h2>
+            <p>Update what your live stream is about. Users will see this at the top of the homepage.</p>
+            <form id="liveInfoForm" class="live-info-form">
+                <label>Live Title</label>
+                <input type="text" id="adminLiveTitle" placeholder="Example: Sri Lanka vs India Live Match">
+                <label>Live Description</label>
+                <textarea id="adminLiveDescription" placeholder="Example: Watch today cricket live stream with updates..."></textarea>
+                <label>Live Status</label>
+                <input type="text" id="adminLiveStatus" placeholder="Example: Live now / Match starts soon">
+                <button type="submit">Save Live Details</button>
+            </form>
+        </section>
+
+        <section class="admin-panel">
+            <h2>HD Live Screen Sharing</h2>
+            <p>For sound: use Chrome, share a browser tab, and tick “Share tab audio”.</p>
+            <div class="admin-buttons">
+                <button id="startStream">Start HD Stream</button>
+                <button id="stopStream">Stop Stream</button>
+                <button id="copyUserLink">Copy User Link</button>
+            </div>
+            <div id="adminStatus" class="admin-status">Status: Not streaming</div>
+            <video id="localVideo" autoplay muted playsinline controls></video>
+        </section>
+
+        <aside class="admin-help">
+            <h3>How to Test</h3>
+            <ol>
+                <li>Open the user website in another tab.</li>
+                <li>Update live title and description.</li>
+                <li>Click Start HD Stream.</li>
+                <li>Choose a Chrome tab and tick Share tab audio for sound.</li>
+            </ol>
+            <div id="viewerCount">Connected viewers: 0</div>
+        </aside>
+    </main>
+    <div id="adminToast" class="toast hidden">Message</div>
+    <script src="/static/js/admin.js"></script>
+</body>
+</html>

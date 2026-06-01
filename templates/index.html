@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNCRICK.COM - Live Cricket Stream & News</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="top-bar">
+        <span>SN CRICK</span>
+        <marquee id="topTicker">SNCRICK.COM loading latest cricket updates...</marquee>
+        <div class="top-socials">
+            <a href="https://www.tiktok.com/@shenanzzbro?_r=1&_t=ZS-96ow9raaXS9" target="_blank" rel="noopener">TikTok</a>
+            <a href="mailto:sncrick.com@gmail.com">Email</a>
+        </div>
+    </div>
+
+    <header class="site-header">
+        <a href="/" class="brand">
+            <img src="/static/images/sncrick-logo.jpeg" alt="SN CRICK Logo">
+            <div>
+                <h1>SN <span>CRICK</span></h1>
+                <p>SNCRICK.COM</p>
+            </div>
+        </a>
+
+        <section class="header-cover">
+            <img src="/static/images/cover-photo.jpeg" alt="T20 World Cup Cover">
+        </section>
+    </header>
+
+    <nav class="main-nav">
+        <a href="/" class="active">⌂</a>
+        <button data-scroll="#live-top">Live Stream</button>
+        <button data-scroll="#latest-news">Latest News</button>
+        <button data-scroll="#scores">Live Scores</button>
+        <button data-scroll="#series">Series</button>
+        <button data-scroll="#teams">Teams</button>
+        <button data-scroll="#about">About Us</button>
+        <button id="searchBtn" class="search-btn">⌕</button>
+    </nav>
+
+    <section class="breaking">
+        <span>BREAKING NEWS</span>
+        <marquee id="breakingTicker">Loading breaking cricket news...</marquee>
+        <button id="prevHero">‹</button>
+        <button id="nextHero">›</button>
+    </section>
+
+    <main class="main-grid">
+        <section class="panel live-first" id="live-top">
+            <div class="live-info">
+                <span class="live-badge">LIVE STREAM</span>
+                <h2 id="liveTitle">Today Live Cricket Stream</h2>
+                <p id="liveDescription">Admin will update this section with match details before going live.</p>
+                <div class="stream-status" id="streamStatus">Waiting for admin live stream</div>
+            </div>
+            <div class="video-box big-video">
+                <video id="remoteVideo" autoplay playsinline controls></video>
+                <div id="streamOverlay" class="stream-overlay">
+                    <div class="play-icon">▶</div>
+                    <p><i></i> SN CRICK LIVE STREAM</p>
+                </div>
+            </div>
+            <button id="watchLiveBtn">Watch Live Now</button>
+        </section>
+
+        <aside class="panel side-news">
+            <h3>Latest News</h3>
+            <div id="sideNews"></div>
+        </aside>
+
+        <section class="hero-card" id="heroCard">
+            <div class="hero-content">
+                <span id="heroCategory">TOP NEWS</span>
+                <h2 id="heroTitle">Loading SN CRICK top story...</h2>
+                <p id="heroSummary">Please wait while we load cricket updates.</p>
+                <button id="heroReadMore">Read More</button>
+            </div>
+            <button class="hero-arrow left" id="heroLeft">‹</button>
+            <button class="hero-arrow right" id="heroRight">›</button>
+            <div class="hero-dots" id="heroDots"></div>
+        </section>
+
+        <section class="panel news-section" id="latest-news">
+            <div class="section-head">
+                <h3>Latest News</h3>
+                <button id="loadMoreNews">Load More</button>
+            </div>
+            <div class="news-grid" id="newsGrid"></div>
+        </section>
+
+        <section class="panel scores-panel" id="scores">
+            <div class="section-head">
+                <h3>Live Scores</h3>
+                <button id="refreshScores">Refresh</button>
+            </div>
+            <div id="scoreCards" class="score-cards"></div>
+        </section>
+
+        <section class="panel series-panel" id="series">
+            <h3>Popular Series</h3>
+            <div class="chip-grid">
+                <button>IPL</button><button>ICC World Cup</button><button>T20 World Cup</button>
+                <button>Asia Cup</button><button>World Test Championship</button><button>The Ashes</button>
+            </div>
+        </section>
+
+        <section class="panel teams-panel" id="teams">
+            <h3>Teams</h3>
+            <div class="chip-grid">
+                <button>India</button><button>Sri Lanka</button><button>Pakistan</button>
+                <button>Australia</button><button>England</button><button>South Africa</button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer" id="about">
+        <div>
+            <img class="footer-logo" src="/static/images/sncrick-logo.jpeg" alt="SN CRICK">
+            <h2>SN <span>CRICK</span></h2>
+            <p>SNCRICK.COM is your white and blue cricket home for live streams, free score updates, cricket news and match updates. Follow us on TikTok for more cricket updates.</p>
+            <div class="footer-socials">
+                <a href="https://www.tiktok.com/@shenanzzbro?_r=1&_t=ZS-96ow9raaXS9" target="_blank" rel="noopener">TikTok</a>
+                <a href="mailto:sncrick.com@gmail.com">Email</a>
+            </div>
+        </div>
+        <div>
+            <h4>Quick Links</h4>
+            <button data-scroll="#live-top">Live Stream</button>
+            <button data-scroll="#latest-news">Latest News</button>
+            <button data-scroll="#scores">Live Scores</button>
+            <button data-scroll="#teams">Teams</button>
+        </div>
+        <div>
+            <h4>Contact</h4>
+            <p>Email: <a href="mailto:sncrick.com@gmail.com">sncrick.com@gmail.com</a></p>
+            <p>Website: SNCRICK.COM</p>
+            <p>TikTok: <a href="https://www.tiktok.com/@shenanzzbro?_r=1&_t=ZS-96ow9raaXS9" target="_blank" rel="noopener">@shenanzzbro</a></p>
+        </div>
+        <div>
+            <h4>Newsletter</h4>
+            <p>Subscribe to get cricket news updates.</p>
+            <form id="newsletterForm" class="newsletter">
+                <input type="email" id="emailInput" placeholder="Enter your email">
+                <button type="submit">Subscribe</button>
+            </form>
+        </div>
+    </footer>
+
+    <div class="copyright">
+        <span>© 2026 SNCRICK.COM. All Rights Reserved.</span>
+        <span>Privacy Policy | Terms & Conditions | Contact Us</span>
+    </div>
+
+    <div id="modal" class="modal hidden">
+        <div class="modal-box">
+            <button id="closeModal" class="close-modal">×</button>
+            <h2 id="modalTitle">SN CRICK</h2>
+            <p id="modalText">Message</p>
+            <a id="modalLink" class="modal-link hidden" target="_blank" rel="noopener">Open source</a>
+        </div>
+    </div>
+
+    <div id="searchModal" class="modal hidden">
+        <div class="modal-box">
+            <button id="closeSearch" class="close-modal">×</button>
+            <h2>Search SN CRICK</h2>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search cricket news...">
+            <div id="searchResults" class="search-results"></div>
+        </div>
+    </div>
+
+    <script src="/static/js/user.js"></script>
+</body>
+</html>

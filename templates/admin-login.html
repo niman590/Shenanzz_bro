@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SNCRICK.COM Admin Login</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="login-body">
+    <main class="login-card">
+        <div class="login-logo-wrap">
+            <img src="/static/images/sncrick-logo.jpeg" alt="SN CRICK">
+        </div>
+        <h1>SN <span>CRICK</span></h1>
+        <p>SNCRICK.COM Admin Login</p>
+        {{ERROR_MESSAGE}}
+        <form method="post" action="/admin-login">
+            <label>Username</label>
+            <input type="text" name="username" placeholder="Enter username" required>
+            <label>Password</label>
+            <input type="password" name="password" placeholder="Enter password" required>
+            <button type="submit">Login</button>
+        </form>
+        <a href="/">← Back to website</a>
+    </main>
+</body>
+</html>
