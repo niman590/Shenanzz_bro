@@ -32,7 +32,13 @@ let heroIndex = 0;
 let socket;
 let peerConnection;
 let currentUserId = null;
+const allowedQualities = ["auto", "q144", "q240", "q360", "q480", "q720", "q1080"];
 let preferredQuality = localStorage.getItem("sncrick_live_quality") || "auto";
+
+if (!allowedQualities.includes(preferredQuality)) {
+  preferredQuality = "auto";
+  localStorage.setItem("sncrick_live_quality", preferredQuality);
+}
 
 const rtcConfig = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
@@ -60,9 +66,9 @@ if (qualitySelect) {
     sendQualityPreference();
 
     if (remoteVideo.srcObject) {
-      streamStatus.textContent = "Changing live quality. Reconnecting stream...";
+      streamStatus.textContent = `Changing live quality to ${qualitySelect.options[qualitySelect.selectedIndex].text}. Reconnecting stream...`;
     } else {
-      streamStatus.textContent = "Live quality selected. Waiting for admin stream...";
+      streamStatus.textContent = `Live quality selected: ${qualitySelect.options[qualitySelect.selectedIndex].text}. Waiting for admin stream...`;
     }
   });
 }

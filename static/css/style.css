@@ -30,7 +30,7 @@
     font-weight: 800;
 }
 
-/* Low-end-device live stream optimization */
+/* Live stream video sizing */
 .video-box {
     contain: content;
 }
@@ -50,7 +50,7 @@
 }
 
 #localVideo {
-    max-height: 480px;
+    max-height: 1080px;
     object-fit: contain;
 }
 

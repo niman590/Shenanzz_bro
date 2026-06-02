@@ -21,16 +21,14 @@ const rtcConfig = {
 };
 
 /*
-  Low-end-device stream fix:
-  - 480p screen share
-  - 15–20 FPS
-  - 600 kbps max video bitrate
-  This keeps the live stream smoother for weak phones and slow internet.
+  Full-quality admin screen share + per-user quality selection.
+  Admin captures Full HD once. Each viewer can request 144p, 240p, 360p, 480p, 720p, or 1080p.
+  WebRTC will apply bitrate, frame rate, and scaleResolutionDownBy per viewer.
 */
 const STREAM_VIDEO_CONSTRAINTS = {
-  width: { ideal: 854, max: 854 },
-  height: { ideal: 480, max: 480 },
-  frameRate: { ideal: 15, max: 20 },
+  width: { ideal: 1920, max: 1920 },
+  height: { ideal: 1080, max: 1080 },
+  frameRate: { ideal: 30, max: 30 },
   cursor: "always",
   displaySurface: "browser"
 };
@@ -42,10 +40,13 @@ const STREAM_AUDIO_CONSTRAINTS = {
 };
 
 const QUALITY_SETTINGS = {
-  data_saver: { label: "Data Saver", bitrate: 300000, framerate: 12 },
-  low: { label: "Low", bitrate: 450000, framerate: 15 },
-  auto: { label: "Auto", bitrate: 600000, framerate: 20 },
-  medium: { label: "Medium", bitrate: 900000, framerate: 20 }
+  auto: { label: "Auto", bitrate: 800000, framerate: 24, scaleResolutionDownBy: 1.5 },
+  q144: { label: "144p", bitrate: 150000, framerate: 12, scaleResolutionDownBy: 5 },
+  q240: { label: "240p", bitrate: 300000, framerate: 15, scaleResolutionDownBy: 3 },
+  q360: { label: "360p", bitrate: 500000, framerate: 20, scaleResolutionDownBy: 2 },
+  q480: { label: "480p", bitrate: 800000, framerate: 24, scaleResolutionDownBy: 1.5 },
+  q720: { label: "720p HD", bitrate: 1800000, framerate: 30, scaleResolutionDownBy: 1.5 },
+  q1080: { label: "1080p Full HD", bitrate: 3000000, framerate: 30, scaleResolutionDownBy: 1 }
 };
 
 function getQualitySettings(userId) {
@@ -186,6 +187,7 @@ async function limitVideoSenderBitrate(peerConnection, userId) {
 
     params.encodings[0].maxBitrate = quality.bitrate;
     params.encodings[0].maxFramerate = quality.framerate;
+    params.encodings[0].scaleResolutionDownBy = quality.scaleResolutionDownBy;
     params.degradationPreference = "maintain-framerate";
 
     await videoSender.setParameters(params);
@@ -245,7 +247,7 @@ startBtn.addEventListener("click", async () => {
     });
 
     localVideo.srcObject = localStream;
-    adminStatus.textContent = "Status: Optimized 480p live stream started. For sound, share a Chrome tab and tick Share tab audio.";
+    adminStatus.textContent = "Status: Admin live started in Full HD 1080p. Users can select 144p, 240p, 360p, 480p, 720p, or 1080p.";
 
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type: "admin-live" }));
