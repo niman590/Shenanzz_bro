@@ -55,33 +55,19 @@
                 <h2 id="liveTitle">Today Live Cricket Stream</h2>
                 <p id="liveDescription">Admin will update this section with match details before going live.</p>
                 <div class="stream-status" id="streamStatus">Waiting for admin live stream</div>
-
-                <div class="quality-row">
-                    <div>
-                        <label for="qualitySelect">Live Quality</label>
-                        <select id="qualitySelect">
-                            <option value="auto" selected>Auto - Recommended</option>
-                            <option value="q144">144p - Data Saver</option>
-                            <option value="q240">240p - Low Data</option>
-                            <option value="q360">360p - Smooth</option>
-                            <option value="q480">480p - Standard</option>
-                            <option value="q720">720p - HD</option>
-                            <option value="q1080">1080p - Full HD</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label for="fpsSelect">Live FPS</label>
-                        <select id="fpsSelect">
-                            <option value="auto" selected>Auto FPS</option>
-                            <option value="24">24 FPS - Smooth Low Data</option>
-                            <option value="30">30 FPS - Recommended</option>
-                            <option value="60">60 FPS - High Motion</option>
-                        </select>
-                    </div>
-                </div>
             </div>
-
+            <div class="quality-row">
+                <label for="qualitySelect">Live Quality</label>
+                <select id="qualitySelect">
+                    <option value="auto">Auto - Recommended</option>
+                    <option value="q144">144p - Data Saver</option>
+                    <option value="q240">240p - Low Data</option>
+                    <option value="q360">360p - Smooth</option>
+                    <option value="q480">480p - Standard</option>
+                    <option value="q720">720p - HD</option>
+                    <option value="q1080">1080p - Full HD</option>
+                </select>
+            </div>
             <div class="video-box big-video">
                 <video id="remoteVideo" autoplay playsinline controls preload="metadata" controlsList="nodownload noplaybackrate"></video>
                 <div id="streamOverlay" class="stream-overlay">
@@ -146,7 +132,7 @@
         <div>
             <img class="footer-logo" src="/static/images/sncrick-logo.jpeg" alt="SN CRICK">
             <h2>SN <span>CRICK</span></h2>
-            <p>SNCRICK.COM is your white and blue cricket home for live streams, free score updates, cricket news and match updates. Follow us on TikTok for more cricket updates.</p>
+            <p>Follow us on Facebook for more cricket updates.</p>
             <div class="footer-socials">
                 <a href="https://www.tiktok.com/@shenanzzbro?_r=1&_t=ZS-96ow9raaXS9" target="_blank" rel="noopener">TikTok</a>
                 <a href="mailto:sncrick.com@gmail.com">Email</a>
