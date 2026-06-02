@@ -14,6 +14,7 @@ let socket;
 let localStream;
 let peerConnections = {};
 let knownUsers = new Set();
+let viewerQualities = {};
 
 const rtcConfig = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
@@ -40,8 +41,16 @@ const STREAM_AUDIO_CONSTRAINTS = {
   autoGainControl: false
 };
 
-const VIDEO_MAX_BITRATE = 600000; // 600 kbps
-const VIDEO_MAX_FRAMERATE = 20;
+const QUALITY_SETTINGS = {
+  data_saver: { label: "Data Saver", bitrate: 300000, framerate: 12 },
+  low: { label: "Low", bitrate: 450000, framerate: 15 },
+  auto: { label: "Auto", bitrate: 600000, framerate: 20 },
+  medium: { label: "Medium", bitrate: 900000, framerate: 20 }
+};
+
+function getQualitySettings(userId) {
+  return QUALITY_SETTINGS[viewerQualities[userId]] || QUALITY_SETTINGS.auto;
+}
 
 function showToast(message) {
   toast.textContent = message;
@@ -118,6 +127,14 @@ function connectAdminSocket() {
       }
     }
 
+    if (message.type === "quality-change") {
+      viewerQualities[message.userId] = QUALITY_SETTINGS[message.quality] ? message.quality : "auto";
+
+      if (localStream) {
+        await createOfferForUser(message.userId);
+      }
+    }
+
     if (message.type === "candidate") {
       const peerConnection = peerConnections[message.userId];
 
@@ -134,6 +151,8 @@ function connectAdminSocket() {
       knownUsers.delete(message.userId);
       updateViewerCount();
 
+      delete viewerQualities[message.userId];
+
       if (peerConnections[message.userId]) {
         peerConnections[message.userId].close();
         delete peerConnections[message.userId];
@@ -147,7 +166,7 @@ function connectAdminSocket() {
   };
 }
 
-async function limitVideoSenderBitrate(peerConnection) {
+async function limitVideoSenderBitrate(peerConnection, userId) {
   const videoSender = peerConnection
     .getSenders()
     .find((sender) => sender.track && sender.track.kind === "video");
@@ -163,8 +182,10 @@ async function limitVideoSenderBitrate(peerConnection) {
       params.encodings = [{}];
     }
 
-    params.encodings[0].maxBitrate = VIDEO_MAX_BITRATE;
-    params.encodings[0].maxFramerate = VIDEO_MAX_FRAMERATE;
+    const quality = getQualitySettings(userId);
+
+    params.encodings[0].maxBitrate = quality.bitrate;
+    params.encodings[0].maxFramerate = quality.framerate;
     params.degradationPreference = "maintain-framerate";
 
     await videoSender.setParameters(params);
@@ -189,7 +210,7 @@ async function createOfferForUser(userId) {
     peerConnection.addTrack(track, localStream);
   });
 
-  await limitVideoSenderBitrate(peerConnection);
+  await limitVideoSenderBitrate(peerConnection, userId);
 
   peerConnection.onicecandidate = (event) => {
     if (event.candidate && socket.readyState === WebSocket.OPEN) {

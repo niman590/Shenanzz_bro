@@ -56,6 +56,15 @@
                 <p id="liveDescription">Admin will update this section with match details before going live.</p>
                 <div class="stream-status" id="streamStatus">Waiting for admin live stream</div>
             </div>
+            <div class="quality-row">
+                <label for="qualitySelect">Live Quality</label>
+                <select id="qualitySelect">
+                    <option value="auto">Auto - Recommended</option>
+                    <option value="data_saver">Data Saver - Weak Phones</option>
+                    <option value="low">Low - Smooth</option>
+                    <option value="medium">Medium - Better Quality</option>
+                </select>
+            </div>
             <div class="video-box big-video">
                 <video id="remoteVideo" autoplay playsinline controls preload="metadata" controlsList="nodownload noplaybackrate"></video>
                 <div id="streamOverlay" class="stream-overlay">

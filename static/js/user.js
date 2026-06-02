@@ -24,12 +24,15 @@ const searchResults = document.getElementById("searchResults");
 const scoreCards = document.getElementById("scoreCards");
 const liveTitle = document.getElementById("liveTitle");
 const liveDescription = document.getElementById("liveDescription");
+const qualitySelect = document.getElementById("qualitySelect");
 
 let allNews = [];
 let shownNewsCount = 3;
 let heroIndex = 0;
 let socket;
 let peerConnection;
+let currentUserId = null;
+let preferredQuality = localStorage.getItem("sncrick_live_quality") || "auto";
 
 const rtcConfig = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
@@ -37,6 +40,33 @@ const rtcConfig = {
 
 remoteVideo.preload = "metadata";
 remoteVideo.playsInline = true;
+function sendQualityPreference() {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  socket.send(JSON.stringify({
+    type: "quality-change",
+    quality: preferredQuality
+  }));
+}
+
+if (qualitySelect) {
+  qualitySelect.value = preferredQuality;
+
+  qualitySelect.addEventListener("change", () => {
+    preferredQuality = qualitySelect.value;
+    localStorage.setItem("sncrick_live_quality", preferredQuality);
+    sendQualityPreference();
+
+    if (remoteVideo.srcObject) {
+      streamStatus.textContent = "Changing live quality. Reconnecting stream...";
+    } else {
+      streamStatus.textContent = "Live quality selected. Waiting for admin stream...";
+    }
+  });
+}
+
 
 function showModal(title, text, url = "") {
   modalTitle.textContent = title;
@@ -284,6 +314,11 @@ function connectLiveWebRTC() {
 
   socket.onmessage = async (event) => {
     const message = JSON.parse(event.data);
+
+    if (message.type === "user-id") {
+      currentUserId = message.userId;
+      sendQualityPreference();
+    }
 
     if (message.type === "offer") {
       await handleOffer(message);
