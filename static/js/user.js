@@ -1,6 +1,8 @@
 const remoteVideo = document.getElementById("remoteVideo");
 const streamOverlay = document.getElementById("streamOverlay");
 const streamStatus = document.getElementById("streamStatus");
+const qualitySelect = document.getElementById("qualitySelect");
+const fpsSelect = document.getElementById("fpsSelect");
 const newsGrid = document.getElementById("newsGrid");
 const sideNews = document.getElementById("sideNews");
 const topTicker = document.getElementById("topTicker");
@@ -24,7 +26,6 @@ const searchResults = document.getElementById("searchResults");
 const scoreCards = document.getElementById("scoreCards");
 const liveTitle = document.getElementById("liveTitle");
 const liveDescription = document.getElementById("liveDescription");
-const qualitySelect = document.getElementById("qualitySelect");
 
 let allNews = [];
 let shownNewsCount = 3;
@@ -32,13 +33,6 @@ let heroIndex = 0;
 let socket;
 let peerConnection;
 let currentUserId = null;
-const allowedQualities = ["auto", "q144", "q240", "q360", "q480", "q720", "q1080"];
-let preferredQuality = localStorage.getItem("sncrick_live_quality") || "auto";
-
-if (!allowedQualities.includes(preferredQuality)) {
-  preferredQuality = "auto";
-  localStorage.setItem("sncrick_live_quality", preferredQuality);
-}
 
 const rtcConfig = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
@@ -46,33 +40,6 @@ const rtcConfig = {
 
 remoteVideo.preload = "metadata";
 remoteVideo.playsInline = true;
-function sendQualityPreference() {
-  if (!socket || socket.readyState !== WebSocket.OPEN) {
-    return;
-  }
-
-  socket.send(JSON.stringify({
-    type: "quality-change",
-    quality: preferredQuality
-  }));
-}
-
-if (qualitySelect) {
-  qualitySelect.value = preferredQuality;
-
-  qualitySelect.addEventListener("change", () => {
-    preferredQuality = qualitySelect.value;
-    localStorage.setItem("sncrick_live_quality", preferredQuality);
-    sendQualityPreference();
-
-    if (remoteVideo.srcObject) {
-      streamStatus.textContent = `Changing live quality to ${qualitySelect.options[qualitySelect.selectedIndex].text}. Reconnecting stream...`;
-    } else {
-      streamStatus.textContent = `Live quality selected: ${qualitySelect.options[qualitySelect.selectedIndex].text}. Waiting for admin stream...`;
-    }
-  });
-}
-
 
 function showModal(title, text, url = "") {
   modalTitle.textContent = title;
@@ -116,6 +83,33 @@ document.querySelectorAll(".top-socials button,.footer-socials button").forEach(
   });
 });
 
+function sendLiveQualityPreference() {
+  if (!socket || socket.readyState !== WebSocket.OPEN || !currentUserId) {
+    return;
+  }
+
+  socket.send(JSON.stringify({
+    type: "quality-change",
+    quality: qualitySelect ? qualitySelect.value : "auto",
+    fps: fpsSelect ? fpsSelect.value : "auto"
+  }));
+
+  const qualityText = qualitySelect ? qualitySelect.options[qualitySelect.selectedIndex].text : "Auto";
+  const fpsText = fpsSelect ? fpsSelect.options[fpsSelect.selectedIndex].text : "Auto FPS";
+
+  if (!streamStatus.textContent.includes("Waiting")) {
+    streamStatus.textContent = `Live quality set to ${qualityText} / ${fpsText}`;
+  }
+}
+
+if (qualitySelect) {
+  qualitySelect.addEventListener("change", sendLiveQualityPreference);
+}
+
+if (fpsSelect) {
+  fpsSelect.addEventListener("change", sendLiveQualityPreference);
+}
+
 document.getElementById("watchLiveBtn").addEventListener("click", () => {
   document.getElementById("live-top").scrollIntoView({ behavior: "smooth" });
   remoteVideo.muted = false;
@@ -126,7 +120,7 @@ document.getElementById("watchLiveBtn").addEventListener("click", () => {
 });
 
 remoteVideo.addEventListener("waiting", () => {
-  streamStatus.textContent = "Live stream is buffering. Please wait...";
+  streamStatus.textContent = "Live stream is buffering. Try 144p, 240p or lower FPS.";
 });
 
 remoteVideo.addEventListener("playing", () => {
@@ -323,7 +317,7 @@ function connectLiveWebRTC() {
 
     if (message.type === "user-id") {
       currentUserId = message.userId;
-      sendQualityPreference();
+      sendLiveQualityPreference();
     }
 
     if (message.type === "offer") {
@@ -345,6 +339,7 @@ function connectLiveWebRTC() {
 
     if (message.type === "admin-live") {
       streamStatus.textContent = "Admin started live. Connecting...";
+      sendLiveQualityPreference();
     }
   };
 
@@ -373,12 +368,13 @@ async function handleOffer(message) {
 
   peerConnection.onconnectionstatechange = () => {
     if (peerConnection.connectionState === "failed" || peerConnection.connectionState === "disconnected") {
-      streamStatus.textContent = "Live connection is weak. Reconnecting may help.";
+      streamStatus.textContent = "Live connection is weak. Try lower quality or lower FPS.";
       streamOverlay && streamOverlay.classList.remove("hidden");
     }
 
     if (peerConnection.connectionState === "connected") {
       streamStatus.textContent = "Live stream connected.";
+      sendLiveQualityPreference();
     }
   };
 

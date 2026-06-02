@@ -14,21 +14,16 @@ let socket;
 let localStream;
 let peerConnections = {};
 let knownUsers = new Set();
-let viewerQualities = {};
+let userStreamSettings = {};
 
 const rtcConfig = {
   iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
 };
 
-/*
-  Full-quality admin screen share + per-user quality selection.
-  Admin captures Full HD once. Each viewer can request 144p, 240p, 360p, 480p, 720p, or 1080p.
-  WebRTC will apply bitrate, frame rate, and scaleResolutionDownBy per viewer.
-*/
 const STREAM_VIDEO_CONSTRAINTS = {
   width: { ideal: 1920, max: 1920 },
   height: { ideal: 1080, max: 1080 },
-  frameRate: { ideal: 30, max: 30 },
+  frameRate: { ideal: 60, max: 60 },
   cursor: "always",
   displaySurface: "browser"
 };
@@ -39,24 +34,19 @@ const STREAM_AUDIO_CONSTRAINTS = {
   autoGainControl: false
 };
 
-const QUALITY_SETTINGS = {
-  auto: { label: "Auto", bitrate: 800000, framerate: 24, scaleResolutionDownBy: 1.5 },
-  q144: { label: "144p", bitrate: 150000, framerate: 12, scaleResolutionDownBy: 5 },
-  q240: { label: "240p", bitrate: 300000, framerate: 15, scaleResolutionDownBy: 3 },
-  q360: { label: "360p", bitrate: 500000, framerate: 20, scaleResolutionDownBy: 2 },
-  q480: { label: "480p", bitrate: 800000, framerate: 24, scaleResolutionDownBy: 1.5 },
-  q720: { label: "720p HD", bitrate: 1800000, framerate: 30, scaleResolutionDownBy: 1.5 },
-  q1080: { label: "1080p Full HD", bitrate: 3000000, framerate: 30, scaleResolutionDownBy: 1 }
+const QUALITY_PROFILES = {
+  auto: { label: "Auto", maxBitrate: 1200000, maxFramerate: 30, scaleResolutionDownBy: 2.0 },
+  q144: { label: "144p", maxBitrate: 120000, maxFramerate: 24, scaleResolutionDownBy: 7.5 },
+  q240: { label: "240p", maxBitrate: 250000, maxFramerate: 24, scaleResolutionDownBy: 4.5 },
+  q360: { label: "360p", maxBitrate: 450000, maxFramerate: 30, scaleResolutionDownBy: 3.0 },
+  q480: { label: "480p", maxBitrate: 800000, maxFramerate: 30, scaleResolutionDownBy: 2.25 },
+  q720: { label: "720p", maxBitrate: 1800000, maxFramerate: 30, scaleResolutionDownBy: 1.5 },
+  q1080: { label: "1080p", maxBitrate: 3500000, maxFramerate: 60, scaleResolutionDownBy: 1.0 }
 };
-
-function getQualitySettings(userId) {
-  return QUALITY_SETTINGS[viewerQualities[userId]] || QUALITY_SETTINGS.auto;
-}
 
 function showToast(message) {
   toast.textContent = message;
   toast.classList.remove("hidden");
-
   setTimeout(() => toast.classList.add("hidden"), 2600);
 }
 
@@ -97,6 +87,58 @@ liveInfoForm.addEventListener("submit", async (event) => {
   }
 });
 
+function getUserProfile(userId) {
+  const savedSettings = userStreamSettings[userId] || {};
+  const quality = savedSettings.quality || "auto";
+  const fps = savedSettings.fps || "auto";
+  const profile = { ...(QUALITY_PROFILES[quality] || QUALITY_PROFILES.auto) };
+
+  if (fps !== "auto") {
+    profile.maxFramerate = Number(fps);
+  }
+
+  if (profile.maxFramerate >= 60 && profile.maxBitrate < 2500000) {
+    profile.maxBitrate = Math.max(profile.maxBitrate, 2500000);
+  }
+
+  return profile;
+}
+
+async function applyUserStreamSettings(userId) {
+  const peerConnection = peerConnections[userId];
+
+  if (!peerConnection) {
+    return;
+  }
+
+  const videoSender = peerConnection
+    .getSenders()
+    .find((sender) => sender.track && sender.track.kind === "video");
+
+  if (!videoSender) {
+    return;
+  }
+
+  try {
+    const profile = getUserProfile(userId);
+    const params = videoSender.getParameters();
+
+    if (!params.encodings || !params.encodings.length) {
+      params.encodings = [{}];
+    }
+
+    params.encodings[0].maxBitrate = profile.maxBitrate;
+    params.encodings[0].maxFramerate = profile.maxFramerate;
+    params.encodings[0].scaleResolutionDownBy = profile.scaleResolutionDownBy;
+
+    params.degradationPreference = "maintain-framerate";
+
+    await videoSender.setParameters(params);
+  } catch (error) {
+    console.warn("Could not apply user stream settings:", error);
+  }
+}
+
 function connectAdminSocket() {
   const protocol = location.protocol === "https:" ? "wss" : "ws";
 
@@ -115,8 +157,28 @@ function connectAdminSocket() {
       updateViewerCount();
       showToast("A viewer connected.");
 
+      if (!userStreamSettings[message.userId]) {
+        userStreamSettings[message.userId] = { quality: "auto", fps: "auto" };
+      }
+
       if (localStream) {
         await createOfferForUser(message.userId);
+      }
+    }
+
+    if (message.type === "quality-change") {
+      const userId = message.userId;
+
+      if (userId) {
+        userStreamSettings[userId] = {
+          quality: message.quality || "auto",
+          fps: message.fps || "auto"
+        };
+
+        await applyUserStreamSettings(userId);
+
+        const profile = getUserProfile(userId);
+        console.log(`Viewer ${userId} changed quality to ${profile.label}, FPS ${profile.maxFramerate}`);
       }
     }
 
@@ -125,14 +187,7 @@ function connectAdminSocket() {
 
       if (peerConnection) {
         await peerConnection.setRemoteDescription(message.answer);
-      }
-    }
-
-    if (message.type === "quality-change") {
-      viewerQualities[message.userId] = QUALITY_SETTINGS[message.quality] ? message.quality : "auto";
-
-      if (localStream) {
-        await createOfferForUser(message.userId);
+        await applyUserStreamSettings(message.userId);
       }
     }
 
@@ -152,12 +207,12 @@ function connectAdminSocket() {
       knownUsers.delete(message.userId);
       updateViewerCount();
 
-      delete viewerQualities[message.userId];
-
       if (peerConnections[message.userId]) {
         peerConnections[message.userId].close();
         delete peerConnections[message.userId];
       }
+
+      delete userStreamSettings[message.userId];
     }
   };
 
@@ -165,35 +220,6 @@ function connectAdminSocket() {
     adminStatus.textContent = "Status: Signaling disconnected. Reconnecting...";
     setTimeout(connectAdminSocket, 2500);
   };
-}
-
-async function limitVideoSenderBitrate(peerConnection, userId) {
-  const videoSender = peerConnection
-    .getSenders()
-    .find((sender) => sender.track && sender.track.kind === "video");
-
-  if (!videoSender) {
-    return;
-  }
-
-  try {
-    const params = videoSender.getParameters();
-
-    if (!params.encodings || !params.encodings.length) {
-      params.encodings = [{}];
-    }
-
-    const quality = getQualitySettings(userId);
-
-    params.encodings[0].maxBitrate = quality.bitrate;
-    params.encodings[0].maxFramerate = quality.framerate;
-    params.encodings[0].scaleResolutionDownBy = quality.scaleResolutionDownBy;
-    params.degradationPreference = "maintain-framerate";
-
-    await videoSender.setParameters(params);
-  } catch (error) {
-    console.warn("Could not apply bitrate limit:", error);
-  }
 }
 
 async function createOfferForUser(userId) {
@@ -212,7 +238,7 @@ async function createOfferForUser(userId) {
     peerConnection.addTrack(track, localStream);
   });
 
-  await limitVideoSenderBitrate(peerConnection, userId);
+  await applyUserStreamSettings(userId);
 
   peerConnection.onicecandidate = (event) => {
     if (event.candidate && socket.readyState === WebSocket.OPEN) {
@@ -247,7 +273,7 @@ startBtn.addEventListener("click", async () => {
     });
 
     localVideo.srcObject = localStream;
-    adminStatus.textContent = "Status: Admin live started in Full HD 1080p. Users can select 144p, 240p, 360p, 480p, 720p, or 1080p.";
+    adminStatus.textContent = "Status: Full HD live stream started. Users can select 144p to 1080p and FPS.";
 
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type: "admin-live" }));
