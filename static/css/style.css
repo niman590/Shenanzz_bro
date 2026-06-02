@@ -30,3 +30,41 @@
     font-weight: 800;
 }
 
+/* Low-end-device live stream optimization */
+.video-box {
+    contain: content;
+}
+
+.video-box video {
+    max-height: 480px;
+}
+
+.big-video {
+    max-height: 480px;
+}
+
+#remoteVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+#localVideo {
+    max-height: 480px;
+    object-fit: contain;
+}
+
+@media(max-width:620px) {
+    .video-box video {
+        max-height: 260px;
+    }
+
+    .big-video {
+        height: 260px;
+        max-height: 260px;
+    }
+
+    #remoteVideo {
+        max-height: 260px;
+    }
+}

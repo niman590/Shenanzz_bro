@@ -1,1 +1,276 @@
-const startBtn=document.getElementById("startStream"),stopBtn=document.getElementById("stopStream"),copyUserLinkBtn=document.getElementById("copyUserLink"),localVideo=document.getElementById("localVideo"),adminStatus=document.getElementById("adminStatus"),viewerCount=document.getElementById("viewerCount"),toast=document.getElementById("adminToast"),liveInfoForm=document.getElementById("liveInfoForm"),adminLiveTitle=document.getElementById("adminLiveTitle"),adminLiveDescription=document.getElementById("adminLiveDescription"),adminLiveStatus=document.getElementById("adminLiveStatus");let socket,localStream,peerConnections={},knownUsers=new Set;const rtcConfig={iceServers:[{urls:"stun:stun.l.google.com:19302"}]};function showToast(m){toast.textContent=m;toast.classList.remove("hidden");setTimeout(()=>toast.classList.add("hidden"),2600)}function updateViewerCount(){viewerCount.textContent=`Connected viewers: ${knownUsers.size}`}async function loadLiveInfo(){try{const r=await fetch("/api/live-info");const i=await r.json();adminLiveTitle.value=i.title;adminLiveDescription.value=i.description;adminLiveStatus.value=i.status}catch(e){console.error(e)}}liveInfoForm.addEventListener("submit",async e=>{e.preventDefault();const fd=new FormData();fd.append("title",adminLiveTitle.value.trim()||"Today Live Cricket Stream");fd.append("description",adminLiveDescription.value.trim()||"Admin will update this section with match details.");fd.append("status",adminLiveStatus.value.trim()||"Waiting for admin live stream");try{await fetch("/api/live-info",{method:"POST",body:fd});showToast("Live details saved.")}catch(err){showToast("Could not save live details.")}});function connectAdminSocket(){const protocol=location.protocol==="https:"?"wss":"ws";socket=new WebSocket(`${protocol}://${location.host}/ws/live`);socket.onopen=()=>{socket.send(JSON.stringify({role:"admin"}));adminStatus.textContent="Status: Admin connected. Ready to stream."};socket.onmessage=async e=>{const m=JSON.parse(e.data);if(m.type==="user-joined"){knownUsers.add(m.userId);updateViewerCount();showToast("A viewer connected.");localStream&&await createOfferForUser(m.userId)}if(m.type==="answer"){const pc=peerConnections[m.userId];pc&&await pc.setRemoteDescription(m.answer)}if(m.type==="candidate"){const pc=peerConnections[m.userId];if(pc)try{await pc.addIceCandidate(m.candidate)}catch(err){console.error(err)}}if(m.type==="user-left"){knownUsers.delete(m.userId);updateViewerCount();peerConnections[m.userId]&&(peerConnections[m.userId].close(),delete peerConnections[m.userId])}};socket.onclose=()=>{adminStatus.textContent="Status: Signaling disconnected. Reconnecting...";setTimeout(connectAdminSocket,2500)}}async function createOfferForUser(userId){if(!localStream||!socket||socket.readyState!==WebSocket.OPEN)return;peerConnections[userId]&&peerConnections[userId].close();const pc=new RTCPeerConnection(rtcConfig);peerConnections[userId]=pc;localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));pc.onicecandidate=e=>{e.candidate&&socket.readyState===WebSocket.OPEN&&socket.send(JSON.stringify({type:"candidate",target:userId,candidate:e.candidate}))};const offer=await pc.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:true});await pc.setLocalDescription(offer);socket.send(JSON.stringify({type:"offer",target:userId,from:"admin",offer}))}startBtn.addEventListener("click",async()=>{try{localStream=await navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30,max:60},cursor:"always",displaySurface:"browser"},audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});localVideo.srcObject=localStream;adminStatus.textContent="Status: HD streaming live. For sound, share a Chrome tab and tick Share tab audio.";socket&&socket.readyState===WebSocket.OPEN&&socket.send(JSON.stringify({type:"admin-live"}));for(const userId of knownUsers)await createOfferForUser(userId);localStream.getVideoTracks()[0].onended=stopStream}catch(err){adminStatus.textContent="Status: Screen share cancelled or blocked.";console.error(err)}});stopBtn.addEventListener("click",stopStream);function stopStream(){localStream&&(localStream.getTracks().forEach(t=>t.stop()),localStream=null);Object.values(peerConnections).forEach(pc=>pc.close());peerConnections={};localVideo.srcObject=null;adminStatus.textContent="Status: Stream stopped."}copyUserLinkBtn.addEventListener("click",async()=>{const link="http://127.0.0.1:8000/";try{await navigator.clipboard.writeText(link);showToast("User website link copied.")}catch{showToast(link)}});loadLiveInfo();connectAdminSocket();updateViewerCount();
+const startBtn = document.getElementById("startStream");
+const stopBtn = document.getElementById("stopStream");
+const copyUserLinkBtn = document.getElementById("copyUserLink");
+const localVideo = document.getElementById("localVideo");
+const adminStatus = document.getElementById("adminStatus");
+const viewerCount = document.getElementById("viewerCount");
+const toast = document.getElementById("adminToast");
+const liveInfoForm = document.getElementById("liveInfoForm");
+const adminLiveTitle = document.getElementById("adminLiveTitle");
+const adminLiveDescription = document.getElementById("adminLiveDescription");
+const adminLiveStatus = document.getElementById("adminLiveStatus");
+
+let socket;
+let localStream;
+let peerConnections = {};
+let knownUsers = new Set();
+
+const rtcConfig = {
+  iceServers: [{ urls: "stun:stun.l.google.com:19302" }]
+};
+
+/*
+  Low-end-device stream fix:
+  - 480p screen share
+  - 15–20 FPS
+  - 600 kbps max video bitrate
+  This keeps the live stream smoother for weak phones and slow internet.
+*/
+const STREAM_VIDEO_CONSTRAINTS = {
+  width: { ideal: 854, max: 854 },
+  height: { ideal: 480, max: 480 },
+  frameRate: { ideal: 15, max: 20 },
+  cursor: "always",
+  displaySurface: "browser"
+};
+
+const STREAM_AUDIO_CONSTRAINTS = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false
+};
+
+const VIDEO_MAX_BITRATE = 600000; // 600 kbps
+const VIDEO_MAX_FRAMERATE = 20;
+
+function showToast(message) {
+  toast.textContent = message;
+  toast.classList.remove("hidden");
+
+  setTimeout(() => toast.classList.add("hidden"), 2600);
+}
+
+function updateViewerCount() {
+  viewerCount.textContent = `Connected viewers: ${knownUsers.size}`;
+}
+
+async function loadLiveInfo() {
+  try {
+    const response = await fetch("/api/live-info");
+    const info = await response.json();
+
+    adminLiveTitle.value = info.title;
+    adminLiveDescription.value = info.description;
+    adminLiveStatus.value = info.status;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+liveInfoForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const formData = new FormData();
+  formData.append("title", adminLiveTitle.value.trim() || "Today Live Cricket Stream");
+  formData.append("description", adminLiveDescription.value.trim() || "Admin will update this section with match details.");
+  formData.append("status", adminLiveStatus.value.trim() || "Waiting for admin live stream");
+
+  try {
+    await fetch("/api/live-info", {
+      method: "POST",
+      body: formData
+    });
+
+    showToast("Live details saved.");
+  } catch (error) {
+    showToast("Could not save live details.");
+  }
+});
+
+function connectAdminSocket() {
+  const protocol = location.protocol === "https:" ? "wss" : "ws";
+
+  socket = new WebSocket(`${protocol}://${location.host}/ws/live`);
+
+  socket.onopen = () => {
+    socket.send(JSON.stringify({ role: "admin" }));
+    adminStatus.textContent = "Status: Admin connected. Ready to stream.";
+  };
+
+  socket.onmessage = async (event) => {
+    const message = JSON.parse(event.data);
+
+    if (message.type === "user-joined") {
+      knownUsers.add(message.userId);
+      updateViewerCount();
+      showToast("A viewer connected.");
+
+      if (localStream) {
+        await createOfferForUser(message.userId);
+      }
+    }
+
+    if (message.type === "answer") {
+      const peerConnection = peerConnections[message.userId];
+
+      if (peerConnection) {
+        await peerConnection.setRemoteDescription(message.answer);
+      }
+    }
+
+    if (message.type === "candidate") {
+      const peerConnection = peerConnections[message.userId];
+
+      if (peerConnection) {
+        try {
+          await peerConnection.addIceCandidate(message.candidate);
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    }
+
+    if (message.type === "user-left") {
+      knownUsers.delete(message.userId);
+      updateViewerCount();
+
+      if (peerConnections[message.userId]) {
+        peerConnections[message.userId].close();
+        delete peerConnections[message.userId];
+      }
+    }
+  };
+
+  socket.onclose = () => {
+    adminStatus.textContent = "Status: Signaling disconnected. Reconnecting...";
+    setTimeout(connectAdminSocket, 2500);
+  };
+}
+
+async function limitVideoSenderBitrate(peerConnection) {
+  const videoSender = peerConnection
+    .getSenders()
+    .find((sender) => sender.track && sender.track.kind === "video");
+
+  if (!videoSender) {
+    return;
+  }
+
+  try {
+    const params = videoSender.getParameters();
+
+    if (!params.encodings || !params.encodings.length) {
+      params.encodings = [{}];
+    }
+
+    params.encodings[0].maxBitrate = VIDEO_MAX_BITRATE;
+    params.encodings[0].maxFramerate = VIDEO_MAX_FRAMERATE;
+    params.degradationPreference = "maintain-framerate";
+
+    await videoSender.setParameters(params);
+  } catch (error) {
+    console.warn("Could not apply bitrate limit:", error);
+  }
+}
+
+async function createOfferForUser(userId) {
+  if (!localStream || !socket || socket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+
+  if (peerConnections[userId]) {
+    peerConnections[userId].close();
+  }
+
+  const peerConnection = new RTCPeerConnection(rtcConfig);
+  peerConnections[userId] = peerConnection;
+
+  localStream.getTracks().forEach((track) => {
+    peerConnection.addTrack(track, localStream);
+  });
+
+  await limitVideoSenderBitrate(peerConnection);
+
+  peerConnection.onicecandidate = (event) => {
+    if (event.candidate && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: "candidate",
+        target: userId,
+        candidate: event.candidate
+      }));
+    }
+  };
+
+  const offer = await peerConnection.createOffer({
+    offerToReceiveAudio: true,
+    offerToReceiveVideo: true
+  });
+
+  await peerConnection.setLocalDescription(offer);
+
+  socket.send(JSON.stringify({
+    type: "offer",
+    target: userId,
+    from: "admin",
+    offer
+  }));
+}
+
+startBtn.addEventListener("click", async () => {
+  try {
+    localStream = await navigator.mediaDevices.getDisplayMedia({
+      video: STREAM_VIDEO_CONSTRAINTS,
+      audio: STREAM_AUDIO_CONSTRAINTS
+    });
+
+    localVideo.srcObject = localStream;
+    adminStatus.textContent = "Status: Optimized 480p live stream started. For sound, share a Chrome tab and tick Share tab audio.";
+
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "admin-live" }));
+    }
+
+    for (const userId of knownUsers) {
+      await createOfferForUser(userId);
+    }
+
+    const videoTrack = localStream.getVideoTracks()[0];
+
+    if (videoTrack) {
+      videoTrack.onended = stopStream;
+    }
+  } catch (error) {
+    adminStatus.textContent = "Status: Screen share cancelled or blocked.";
+    console.error(error);
+  }
+});
+
+stopBtn.addEventListener("click", stopStream);
+
+function stopStream() {
+  if (localStream) {
+    localStream.getTracks().forEach((track) => track.stop());
+    localStream = null;
+  }
+
+  Object.values(peerConnections).forEach((peerConnection) => peerConnection.close());
+  peerConnections = {};
+
+  localVideo.srcObject = null;
+  adminStatus.textContent = "Status: Stream stopped.";
+}
+
+copyUserLinkBtn.addEventListener("click", async () => {
+  const link = location.origin + "/";
+
+  try {
+    await navigator.clipboard.writeText(link);
+    showToast("User website link copied.");
+  } catch {
+    showToast(link);
+  }
+});
+
+loadLiveInfo();
+connectAdminSocket();
+updateViewerCount();
